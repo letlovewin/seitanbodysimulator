@@ -19,28 +19,20 @@ root_canvas.pack()
 
 # Commence the actual math & computation!
 
-delta_t = 1
+delta_t = 12500
 a = 0
-b = 10000000000
+b = 86400 * 365 * 10
 
-universe = gravity.Universe()
+universe = gravity.Universe(radius=2.50e+11)
 
 
+earth = gravity.Particle(universe,root_canvas,[1.4960e+11,0.0000e+00],[0.0000e+00,2.9800e+04],5.9740e+24)
+mars = gravity.Particle(universe,root_canvas,[2.2790e+11,0.0000e+00],[0.0000e+00, 2.4100e+04],6.4190e+23)
+mercury = gravity.Particle(universe,root_canvas,[5.7900e+10, 0.0000e+00],[0.0000e+00, 4.7900e+04],3.3020e+23)
+sun = gravity.Particle(universe,root_canvas,[0.0000e+00,0.0000e+00],[0.0000e+00, 0.0000e+00],1.9890e+30)
+venus = gravity.Particle(universe,root_canvas,[1.0820e+11, 0.0000e+00],[0.0000e+00, 3.5000e+04],4.8690e+24)
 
-p1 = gravity.Particle(universe,root_canvas,[0,70],[.1,.2],10)
-p1.turtle.pencolor("#E02F09")
-
-p2 = gravity.Particle(universe,root_canvas,[-55,-25],[.1,.2],10)
-p2.turtle.pencolor("#0993e0")
-
-p3 = gravity.Particle(universe,root_canvas,[25,55],[-.1,-.1],100)
-
-p4 = gravity.Particle(universe,root_canvas,[0,0],[0,0],10000)
-
-while a < b:
-    for particle in universe.getChildren():
-        particle.calculatePosition(delta_t)
-    a += delta_t
+universe.startSimulation(a,b,delta_t)
 
 # Start up the main window
 

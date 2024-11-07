@@ -1,7 +1,7 @@
 from math import *
 from turtle import *
 
-G = 6.67*10**(-10)# This is the universal gravitational constant (https://en.wikipedia.org/wiki/Gravitational_constant) if we were to put the real value the simulation wouldn't quite work due to rounding error.
+G = 6.67*10**(-11)# This is the universal gravitational constant (https://en.wikipedia.org/wiki/Gravitational_constant) if we were to put the real value the simulation wouldn't quite work due to rounding error.
 SOFTENING_CONSTANT = 10# When particles get too close to one another, their acceleration may shoot into infinity. This softening constant is added to prevent that.
 BODY_LIMIT = 10 # Upper bound to particles that can be generated.
 
@@ -18,7 +18,7 @@ class Universe:
         return self.children
     def addChild(self,particle):
         self.children.append(particle)
-    def startSimulation(self,a,b,delta_t):
+    def startSimulation(self,a,b,delta_t,output=False):
         if self.isRunning == True:
             print("Simulation is already running! Please stop the simulation before running this command again!")
             return
@@ -29,6 +29,12 @@ class Universe:
                     particle.calculatePosition(delta_t)
                 a += delta_t
             self.isRunning = False
+        if output == True:
+            for particle in self.getChildren():
+                print(particle.name)
+                print("Position: ", particle.position)
+                print("Velocity: ", particle.velocity)
+                print("Mass: ", particle.mass)
     def stop(self):
         self.isRunning = False
 
@@ -36,14 +42,15 @@ class Particle:
     # THIS is where our particles are initialized.
     # It follows that each particle is given a position vector in R^2 and an acceleration vector in R^2.
     
-    def __init__(self, parent, canvas, position=[0,0], velocity=[0,0],mass=1):
+    def __init__(self, parent, canvas, position=[0,0], velocity=[0,0],mass=1,name="Particle"):
         self.position = position
         self.velocity = velocity
         self.acceleration = [0,0]
         self.netForce = [0,0]
         self.mass = mass
+        self.name = name
         
-        self.scaling_factor = (parent.radius/10**2.5)
+        self.scaling_factor = (parent.radius/10**2.75)
         self.turtle = RawTurtle(canvas)
         self.turtle.shape("circle")
         self.turtle.penup()
@@ -54,15 +61,17 @@ class Particle:
         
         
     def calculatePosition(self,delta_t):
+        self.turtle.pendown()
         F_x = 0
         F_y = 0
         for particle in self.parent.getChildren():
             if particle != self: ## Don't calculate the force exerted on a particle by itself!
                 delta_x = particle.position[0]-self.position[0]
                 delta_y = particle.position[1]-self.position[1]
-                F = G*self.mass*particle.mass/(delta_x**2+delta_y**2)
-                F_x += F*delta_x/sqrt(delta_x**2 + delta_y**2)
-                F_y += F*delta_y/sqrt(delta_x**2+delta_y**2)
+                r = sqrt(delta_x**2 + delta_y**2)
+                F = G*self.mass*particle.mass/(r**2+SOFTENING_CONSTANT**2)
+                F_x += F*delta_x/r
+                F_y += F*delta_y/r
                 #print(F_x,F_y)
                 #print("###")
         self.netForce = [F_x,F_y]

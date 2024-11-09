@@ -1,13 +1,180 @@
+# Written by GRAY
+# Yes, I'm aware this code is extremely messy and hacky. It'll be fixed at some point in the near future.
+
 from math import *
 from turtle import *
 
 G = 6.67*10**(-11)# This is the universal gravitational constant (https://en.wikipedia.org/wiki/Gravitational_constant) if we were to put the real value the simulation wouldn't quite work due to rounding error.
 SOFTENING_CONSTANT = 10# When particles get too close to one another, their acceleration may shoot into infinity. This softening constant is added to prevent that.
 BODY_LIMIT = 10 # Upper bound to particles that can be generated.
+THETA = 0.5
 
 def vectorMagnitude(v): 
     # Vector magnitude in R2
     return sqrt(v[0]**2+v[1]**2)
+
+def is_in(x_p,y_p,x_interval,y_interval):
+    if x_p >= x_interval[0] and x_p <= x_interval[1] and y_p >= y_interval[0] and y_p <= y_interval[1]:
+        return True
+    return False
+
+class Quadrant:
+    def __init__(self,x,y,length):
+        self.x = x
+        self.y = y
+        self.length = length
+    def length(self):
+        return self.length
+    def contains(self,particle):
+        return is_in(particle.position[0],particle.position[1],[self.x,self.x+self.length],[self.y,self.y+self.length])
+    def NW(self):
+        return Quadrant(self.x,self.y+self.length/2,self.length/2)
+    def NE(self):
+        return Quadrant(self.x+self.length/2,self.y+self.length/2,self.length/2)
+    def SW(self):
+        return Quadrant(self.x,self.y,self.length/2)
+    def SE(self):
+        return Quadrant(self.x+self.length/2,self.y,self.length/2)
+    
+
+class BarnesHutTree:
+    def __init__(self,quadrant,particle=None):
+        self.body = particle
+        self.children = [None,None,None,None]
+        # For the children, 0 is northeast, 1 is northwest, 2 is southwest, 3 is southeast.
+        self.COM = [0,0]
+        self.mass = 0
+        self.quadrant = quadrant
+    def isEmpty(self):
+        if self.children == [None,None,None,None]:
+            return True
+        return False
+    def getQuadrant(self):
+        return self.quadrant
+    def getNorthEast(self):
+        return self.children[0]
+    def getNorthWest(self):
+        return self.children[1]
+    def getSouthWest(self):
+        return self.children[2]
+    def getSouthEast(self):
+        return self.children[3]
+    def getTotalMass(self,mass=0):
+        if self.isEmpty() and self.body:
+            return self.body.mass
+        if self.isEmpty() and self.body == None:
+            return 0
+        mass_ne = self.children[0].getTotalMass(mass)
+        mass_nw = self.children[1].getTotalMass(mass)
+        mass_sw = self.children[2].getTotalMass(mass)
+        mass_se = self.children[3].getTotalMass(mass)
+        return mass + mass_ne + mass_nw + mass_sw + mass_se
+    def getYMoment(self,yMoment=0):
+        if self.isEmpty() and self.body:
+            return self.body.position[1]*self.body.mass
+        if self.isEmpty() and self.body == None:
+            return 0
+        yMoment_ne = self.children[0].getYMoment(yMoment)
+        yMoment_nw = self.children[1].getYMoment(yMoment)
+        yMoment_sw = self.children[2].getYMoment(yMoment)
+        yMoment_se = self.children[3].getYMoment(yMoment)
+        return yMoment + yMoment_ne + yMoment_nw + yMoment_sw + yMoment_se
+    def getXMoment(self,xMoment=0):
+        if self.isEmpty() and self.body:
+            return self.body.position[0]*self.body.mass
+        if self.isEmpty() and self.body == None:
+            return 0
+        xMoment_ne = self.children[0].getXMoment(xMoment)
+        xMoment_nw = self.children[1].getXMoment(xMoment)
+        xMoment_sw = self.children[2].getXMoment(xMoment)
+        xMoment_se = self.children[3].getXMoment(xMoment)
+        return xMoment + xMoment_ne + xMoment_nw + xMoment_sw + xMoment_se
+        
+    def traverse(self):
+        if self.isEmpty():
+            if self.body != None:
+                print(self.body.mass)
+            return
+        ne = self.children[0].traverse()
+        nw = self.children[1].traverse()
+        sw = self.children[2].traverse()
+        se = self.children[3].traverse()
+    def getCOM(self):
+        xMoment = self.getXMoment()
+        yMoment = self.getYMoment()
+        totalMass = self.getTotalMass()
+        return [yMoment/totalMass,xMoment/totalMass]
+    def insert(self,particle):
+        if self.body == None and self.isEmpty():
+            self.body = particle
+            return
+        if self.isEmpty():
+            nw = self.quadrant.NW()
+            ne = self.quadrant.NE()
+            sw = self.quadrant.SW()
+            se = self.quadrant.SE()
+            self.children = [BarnesHutTree(nw),BarnesHutTree(ne),BarnesHutTree(sw),BarnesHutTree(se)]
+            
+            if nw.contains(particle):
+                self.children[0].insert(particle)
+            elif ne.contains(particle):
+                self.children[1].insert(particle)
+            elif sw.contains(particle):
+                self.children[2].insert(particle)
+            else:
+                self.children[3].insert(particle)
+            curr_particle = self.body
+            if nw.contains(self.body):
+                self.children[0].insert(curr_particle)
+            elif ne.contains(self.body):
+                self.children[1].insert(curr_particle)
+            elif sw.contains(self.body):
+                self.children[2].insert(curr_particle)
+            else:
+                self.children[3].insert(curr_particle)
+                
+            self.body = None
+            return
+        nw = self.children[0].quadrant
+        ne = self.children[1].quadrant
+        sw = self.children[2].quadrant
+        se = self.children[3].quadrant
+        if nw.contains(particle):
+            self.children[0].insert(particle)
+        elif ne.contains(particle):
+            self.children[1].insert(particle)
+        elif sw.contains(particle):
+            self.children[2].insert(particle)
+        elif se.contains(particle):
+            self.children[3].insert(particle)
+        return
+    def updateForce(self,particle,nF_x=0,nF_y=0):
+        if self.isEmpty() and self.body:
+            if self.body == particle:
+                return [0,0]
+            delta_x = self.body.position[0]-particle.position[0]
+            delta_y = self.body.position[1]-particle.position[1]
+            r = sqrt(delta_x**2 + delta_y**2)
+            F = G*self.body.mass*particle.mass/(r**2+SOFTENING_CONSTANT**2)
+            return [F*delta_x/r,F*delta_y/r]
+        if self.isEmpty() and self.body == None:
+            return [0,0]
+        com = self.getCOM()
+        s = self.quadrant.length
+        delta_x = particle.position[0]-com[0]
+        delta_y = particle.position[1]-com[1]
+        d = sqrt(delta_x**2+delta_y**2)
+        if s/d < THETA:
+            total_mass = self.getTotalMass()
+            r = sqrt(delta_x**2 + delta_y**2)
+            F = G*total_mass*particle.mass/(r**2+SOFTENING_CONSTANT**2)
+            return [F*delta_x/r,F*delta_y/r]
+        else:
+            neF = self.children[0].updateForce(particle,nF_x,nF_y)
+            nwF = self.children[1].updateForce(particle,nF_x,nF_y)
+            swF = self.children[2].updateForce(particle,nF_x,nF_y)
+            seF = self.children[3].updateForce(particle,nF_x,nF_y)
+            return [neF[0]+nwF[0]+swF[0]+seF[0],neF[1]+nwF[1]+swF[1]+seF[1]]
 
 class Universe:
     def __init__(self,radius):
@@ -50,8 +217,10 @@ class Particle:
         self.mass = mass
         self.name = name
         
-        self.scaling_factor = (parent.radius/10**2.75)
+        self.scaling_factor = (parent.radius/10**2.6)
         self.turtle = RawTurtle(canvas)
+        
+        self.canvas = canvas
         self.turtle.shape("circle")
         self.turtle.penup()
         self.turtle.goto(self.position[0]/self.scaling_factor,self.position[1]/self.scaling_factor)
@@ -59,21 +228,26 @@ class Particle:
         self.parent = parent
         self.parent.addChild(self)
         
+    def is_in(self,quadrant):
+        return quadrant.contains(self)
+    
+    def add(self,p1,p2):
+        m = p1.mass + p2.mass
+        COM_particle = Particle(self.parent,self.canvas,)
         
     def calculatePosition(self,delta_t):
-        self.turtle.pendown()
+        # A naive implementation of gravitational force calculation.
+        # https://www.cs.princeton.edu/courses/archive/spr15/cos126/assignments/nbody.html
         F_x = 0
         F_y = 0
         for particle in self.parent.getChildren():
             if particle != self: ## Don't calculate the force exerted on a particle by itself!
                 delta_x = particle.position[0]-self.position[0]
                 delta_y = particle.position[1]-self.position[1]
-                r = sqrt(delta_x**2 + delta_y**2)
+                r = sqrt(delta_x**2 + delta_y**2) # r is the distance from body 1 to body 2
                 F = G*self.mass*particle.mass/(r**2+SOFTENING_CONSTANT**2)
                 F_x += F*delta_x/r
                 F_y += F*delta_y/r
-                #print(F_x,F_y)
-                #print("###")
         self.netForce = [F_x,F_y]
         a_x = self.netForce[0]/self.mass
         a_y = self.netForce[1]/self.mass

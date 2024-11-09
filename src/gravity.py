@@ -123,16 +123,15 @@ class BarnesHutTree:
                 self.children[2].insert(particle)
             else:
                 self.children[3].insert(particle)
-            curr_particle = self.body
-            if nw.contains(self.body):
-                self.children[0].insert(curr_particle)
-            elif ne.contains(self.body):
-                self.children[1].insert(curr_particle)
-            elif sw.contains(self.body):
-                self.children[2].insert(curr_particle)
-            else:
-                self.children[3].insert(curr_particle)
                 
+            if nw.contains(self.body):
+                self.children[0].insert(self.body)
+            elif ne.contains(self.body):
+                self.children[1].insert(self.body)
+            elif sw.contains(self.body):
+                self.children[2].insert(self.body)
+            elif se.contains(self.body):
+                self.children[3].insert(self.body)    
             self.body = None
             return
         nw = self.children[0].quadrant
@@ -192,8 +191,20 @@ class Universe:
         self.isRunning = True
         while self.isRunning == True:
             while a < b:
+                bht = BarnesHutTree(Quadrant(0,0,self.radius))
                 for particle in self.getChildren():
-                    particle.calculatePosition(delta_t)
+                    print("##############")
+                    print(particle.position)
+                    print(particle.mass)
+                    bht.insert(particle)
+                for particle in self.getChildren():
+                    F_xy = bht.updateForce(particle)
+                    a_x = F_xy[0]/particle.mass
+                    a_y = F_xy[1]/particle.mass
+                    particle.acceleration = [a_x,a_y]
+                    particle.velocity = [particle.velocity[0]+delta_t*particle.acceleration[0],particle.velocity[1]+delta_t*particle.acceleration[1]]
+                    particle.position = [particle.position[0] + delta_t*particle.velocity[0],particle.position[1] + delta_t*particle.velocity[1]]
+                    particle.turtle.goto(particle.position[0]/particle.scaling_factor,particle.position[1]/particle.scaling_factor)
                 a += delta_t
             self.isRunning = False
         if output == True:

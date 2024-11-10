@@ -6,7 +6,6 @@ from turtle import *
 
 G = 6.67*10**(-11)# This is the universal gravitational constant (https://en.wikipedia.org/wiki/Gravitational_constant) if we were to put the real value the simulation wouldn't quite work due to rounding error.
 SOFTENING_CONSTANT = 10# When particles get too close to one another, their acceleration may shoot into infinity. This softening constant is added to prevent that.
-BODY_LIMIT = 10 # Upper bound to particles that can be generated.
 THETA = 0.5
 
 def is_in(x_p,y_p,x_interval,y_interval):
@@ -37,8 +36,6 @@ class BarnesHutTree:
         self.body = particle
         self.children = [None,None,None,None]
         # For the children, 0 is northeast, 1 is northwest, 2 is southwest, 3 is southeast.
-        self.COM = [0,0]
-        self.mass = 0
         self.quadrant = quadrant
     def isEmpty(self):
         if self.children == [None,None,None,None]:
@@ -102,10 +99,10 @@ class BarnesHutTree:
             self.body = particle
             return
         if self.isEmpty():
-            nw = self.quadrant.NW()
-            ne = self.quadrant.NE()
-            sw = self.quadrant.SW()
-            se = self.quadrant.SE()
+            nw = self.getQuadrant().NW()
+            ne = self.getQuadrant().NE()
+            sw = self.getQuadrant().SW()
+            se = self.getQuadrant().SE()
             
             if nw.contains(particle):
                 if self.children[0] == None:
@@ -161,7 +158,7 @@ class BarnesHutTree:
         if self.isEmpty() and self.body == None:
             return [0,0]
         com = self.getCOM()
-        s = self.quadrant.length
+        s = self.getQuadrant().length
         delta_x = com[0]-particle.position[0]
         delta_y = com[1]-particle.position[1]
         d = sqrt(delta_x**2+delta_y**2)
@@ -178,11 +175,6 @@ class BarnesHutTree:
                     tf = tree.updateForce(particle,nF_x,nF_y)
                     totalForce_x += tf[0]
                     totalForce_y += tf[1]
-            #neF = self.children[0].updateForce(particle,nF_x,nF_y)
-            #nwF = self.children[1].updateForce(particle,nF_x,nF_y)
-            #swF = self.children[2].updateForce(particle,nF_x,nF_y)
-            #seF = self.children[3].updateForce(particle,nF_x,nF_y)
-            #return [neF[0]+nwF[0]+swF[0]+seF[0],neF[1]+nwF[1]+swF[1]+seF[1]]
             return [totalForce_x,totalForce_y]
 
 class Universe:
@@ -201,9 +193,11 @@ class Universe:
         self.isRunning = True
         while self.isRunning == True:
             while a < b:
-                bht = BarnesHutTree(Quadrant(0,0,self.radius))
+                main_quadrant = Quadrant(0,0,self.radius)
+                bht = BarnesHutTree(main_quadrant)
                 for particle in self.getChildren():
-                    bht.insert(particle)
+                    if main_quadrant.contains(particle):
+                        bht.insert(particle)
                 for particle in self.getChildren():
                     F_xy = bht.updateForce(particle)
                     a_x = F_xy[0]/particle.mass
@@ -270,6 +264,7 @@ class Particle:
         
         self.canvas = canvas
         self.turtle.shape("circle")
+        self.turtle.shapesize(0.8,0.8)
         self.turtle.penup()
         self.turtle.goto(self.position[0]/self.scaling_factor,self.position[1]/self.scaling_factor)
         

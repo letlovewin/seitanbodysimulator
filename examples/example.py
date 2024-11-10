@@ -23,7 +23,7 @@ root.mainloop()
 
 # Commence the actual math & computation!
 
-delta_t = 12500
+delta_t = 86400
 a = 0
 b = 86400 * 365 * 10
 

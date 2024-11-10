@@ -26,8 +26,8 @@ b = 86400 * 10 * 365
 universe = gravity.Universe(radius=150)
 
 for i in range(4):
-    px = random.uniform(-150,150)
-    py = random.uniform(-150,150)
+    px = random.uniform(-150/2,150/2)
+    py = random.uniform(-150/2,150/2)
     vx = random.uniform(-10e-6,10e-6)
     vy = random.uniform(-10e-6,10e-6)
     mass = random.uniform(50,250)

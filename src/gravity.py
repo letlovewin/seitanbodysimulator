@@ -7,11 +7,7 @@ from turtle import *
 G = 6.67*10**(-11)# This is the universal gravitational constant (https://en.wikipedia.org/wiki/Gravitational_constant) if we were to put the real value the simulation wouldn't quite work due to rounding error.
 SOFTENING_CONSTANT = 10# When particles get too close to one another, their acceleration may shoot into infinity. This softening constant is added to prevent that.
 BODY_LIMIT = 10 # Upper bound to particles that can be generated.
-THETA = 0.2
-
-def vectorMagnitude(v): 
-    # Vector magnitude in R2
-    return sqrt(v[0]**2+v[1]**2)
+THETA = 0.5
 
 def is_in(x_p,y_p,x_interval,y_interval):
     if x_p >= x_interval[0] and x_p <= x_interval[1] and y_p >= y_interval[0] and y_p <= y_interval[1]:
@@ -36,7 +32,6 @@ class Quadrant:
     def SE(self):
         return Quadrant(self.x+self.length/2,self.y,self.length/2)
     
-
 class BarnesHutTree:
     def __init__(self,quadrant,particle=None):
         self.body = particle
@@ -64,41 +59,39 @@ class BarnesHutTree:
             return self.body.mass
         if self.isEmpty() and self.body == None:
             return 0
-        mass_ne = self.children[0].getTotalMass(mass)
-        mass_nw = self.children[1].getTotalMass(mass)
-        mass_sw = self.children[2].getTotalMass(mass)
-        mass_se = self.children[3].getTotalMass(mass)
-        return mass + mass_ne + mass_nw + mass_sw + mass_se
+        temp = 0
+        for tree in self.children:
+            if tree:
+                temp += tree.getTotalMass(mass)
+        return mass + temp
     def getYMoment(self,yMoment=0):
         if self.isEmpty() and self.body:
             return self.body.position[1]*self.body.mass
         if self.isEmpty() and self.body == None:
             return 0
-        yMoment_ne = self.children[0].getYMoment(yMoment)
-        yMoment_nw = self.children[1].getYMoment(yMoment)
-        yMoment_sw = self.children[2].getYMoment(yMoment)
-        yMoment_se = self.children[3].getYMoment(yMoment)
-        return yMoment + yMoment_ne + yMoment_nw + yMoment_sw + yMoment_se
+        temp = 0
+        for tree in self.children:
+            if tree:
+                temp += tree.getYMoment(yMoment)
+        return yMoment + temp
     def getXMoment(self,xMoment=0):
         if self.isEmpty() and self.body:
             return self.body.position[0]*self.body.mass
         if self.isEmpty() and self.body == None:
             return 0
-        xMoment_ne = self.children[0].getXMoment(xMoment)
-        xMoment_nw = self.children[1].getXMoment(xMoment)
-        xMoment_sw = self.children[2].getXMoment(xMoment)
-        xMoment_se = self.children[3].getXMoment(xMoment)
-        return xMoment + xMoment_ne + xMoment_nw + xMoment_sw + xMoment_se
+        temp = 0
+        for tree in self.children:
+            if tree:
+                temp += tree.getXMoment(xMoment)
+        return xMoment + temp
         
     def traverse(self):
         if self.isEmpty():
             if self.body != None:
                 print(self.body.mass)
             return
-        ne = self.children[0].traverse()
-        nw = self.children[1].traverse()
-        sw = self.children[2].traverse()
-        se = self.children[3].traverse()
+        for child in self.children:
+            child.traverse()
     def getCOM(self):
         xMoment = self.getXMoment()
         yMoment = self.getYMoment()
@@ -113,40 +106,48 @@ class BarnesHutTree:
             ne = self.quadrant.NE()
             sw = self.quadrant.SW()
             se = self.quadrant.SE()
-            self.children = [BarnesHutTree(nw),BarnesHutTree(ne),BarnesHutTree(sw),BarnesHutTree(se)]
             
             if nw.contains(particle):
+                if self.children[0] == None:
+                    self.children[0] = BarnesHutTree(nw)
                 self.children[0].insert(particle)
             elif ne.contains(particle):
+                if self.children[1] == None:
+                    self.children[1] = BarnesHutTree(ne)
                 self.children[1].insert(particle)
             elif sw.contains(particle):
+                if self.children[2] == None:
+                    self.children[2] = BarnesHutTree(sw)
                 self.children[2].insert(particle)
             elif se.contains(particle):
+                if self.children[3] == None:
+                    self.children[3] = BarnesHutTree(se)
                 self.children[3].insert(particle)
             
             if nw.contains(self.body):
+                if self.children[0] == None:
+                    self.children[0] = BarnesHutTree(nw)
                 self.children[0].insert(self.body)
             elif ne.contains(self.body):
+                if self.children[1] == None:
+                    self.children[1] = BarnesHutTree(ne)
                 self.children[1].insert(self.body)
             elif sw.contains(self.body):
+                if self.children[2] == None:
+                    self.children[2] = BarnesHutTree(sw)
                 self.children[2].insert(self.body)
             elif se.contains(self.body):
+                if self.children[3] == None:
+                    self.children[3] = BarnesHutTree(se)
                 self.children[3].insert(self.body)
                 
             self.body = None
             return
-        nw = self.children[0].quadrant
-        ne = self.children[1].quadrant
-        sw = self.children[2].quadrant
-        se = self.children[3].quadrant
-        if nw.contains(particle):
-            self.children[0].insert(particle)
-        elif ne.contains(particle):
-            self.children[1].insert(particle)
-        elif sw.contains(particle):
-            self.children[2].insert(particle)
-        elif se.contains(particle):
-            self.children[3].insert(particle)
+        for tree in self.children:
+            if tree:
+                if tree.quadrant.contains(particle):
+                    tree.insert(particle)
+                    return
         return
     def updateForce(self,particle,nF_x=0,nF_y=0):
         if self.isEmpty() and self.body:
@@ -170,11 +171,19 @@ class BarnesHutTree:
             F = G*total_mass*particle.mass/(r**2+SOFTENING_CONSTANT**2)
             return [F*delta_x/r,F*delta_y/r]
         else:
-            neF = self.children[0].updateForce(particle,nF_x,nF_y)
-            nwF = self.children[1].updateForce(particle,nF_x,nF_y)
-            swF = self.children[2].updateForce(particle,nF_x,nF_y)
-            seF = self.children[3].updateForce(particle,nF_x,nF_y)
-            return [neF[0]+nwF[0]+swF[0]+seF[0],neF[1]+nwF[1]+swF[1]+seF[1]]
+            totalForce_x = 0
+            totalForce_y = 0
+            for tree in self.children:
+                if tree:
+                    tf = tree.updateForce(particle,nF_x,nF_y)
+                    totalForce_x += tf[0]
+                    totalForce_y += tf[1]
+            #neF = self.children[0].updateForce(particle,nF_x,nF_y)
+            #nwF = self.children[1].updateForce(particle,nF_x,nF_y)
+            #swF = self.children[2].updateForce(particle,nF_x,nF_y)
+            #seF = self.children[3].updateForce(particle,nF_x,nF_y)
+            #return [neF[0]+nwF[0]+swF[0]+seF[0],neF[1]+nwF[1]+swF[1]+seF[1]]
+            return [totalForce_x,totalForce_y]
 
 class Universe:
     def __init__(self,radius):
@@ -203,6 +212,36 @@ class Universe:
                     particle.velocity = [particle.velocity[0]+delta_t*particle.acceleration[0],particle.velocity[1]+delta_t*particle.acceleration[1]]
                     particle.position = [particle.position[0] + delta_t*particle.velocity[0],particle.position[1] + delta_t*particle.velocity[1]]
                     particle.turtle.goto(particle.position[0]/particle.scaling_factor,particle.position[1]/particle.scaling_factor)
+                a += delta_t
+            self.isRunning = False
+        if output == True:
+            for particle in self.getChildren():
+                print(particle.name)
+                print("Position: ", particle.position)
+                print("Velocity: ", particle.velocity)
+                print("Mass: ", particle.mass)
+    def startSimulationNaive(self,a,b,delta_t,output=False):
+        if self.isRunning == True:
+            print("Simulation is already running! Please stop the simulation before running this command again!")
+            return
+        self.isRunning = True
+        while self.isRunning == True:
+            while a < b:
+                for particle in self.getChildren():
+                    for other in self.getChildren():
+                        if particle != other:
+                            delta_x = particle.position[0]-other.position[0]
+                            delta_y = particle.position[1]-other.position[1]
+                            r = sqrt(delta_x**2 + delta_y**2)
+                            F = G*particle.mass*other.mass/(r**2+SOFTENING_CONSTANT**2)
+                            F_x = F*delta_x/r
+                            F_y = F*delta_y/r
+                            a_x = F_x/particle.mass
+                            a_y = F_y/particle.mass
+                            particle.acceleration = [a_x,a_y]
+                            particle.velocity = [particle.velocity[0]+delta_t*particle.acceleration[0],particle.velocity[1]+delta_t*particle.acceleration[1]]
+                            particle.position = [particle.position[0] + delta_t*particle.velocity[0],particle.position[1] + delta_t*particle.velocity[1]]
+                            particle.turtle.goto(particle.position[0]/particle.scaling_factor,particle.position[1]/particle.scaling_factor)
                 a += delta_t
             self.isRunning = False
         if output == True:

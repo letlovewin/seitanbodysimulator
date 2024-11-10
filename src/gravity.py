@@ -7,7 +7,7 @@ from turtle import *
 G = 6.67*10**(-11)# This is the universal gravitational constant (https://en.wikipedia.org/wiki/Gravitational_constant) if we were to put the real value the simulation wouldn't quite work due to rounding error.
 SOFTENING_CONSTANT = 10# When particles get too close to one another, their acceleration may shoot into infinity. This softening constant is added to prevent that.
 BODY_LIMIT = 10 # Upper bound to particles that can be generated.
-THETA = 0.5
+THETA = 0.2
 
 def vectorMagnitude(v): 
     # Vector magnitude in R2
@@ -121,9 +121,9 @@ class BarnesHutTree:
                 self.children[1].insert(particle)
             elif sw.contains(particle):
                 self.children[2].insert(particle)
-            else:
+            elif se.contains(particle):
                 self.children[3].insert(particle)
-                
+            
             if nw.contains(self.body):
                 self.children[0].insert(self.body)
             elif ne.contains(self.body):
@@ -131,7 +131,8 @@ class BarnesHutTree:
             elif sw.contains(self.body):
                 self.children[2].insert(self.body)
             elif se.contains(self.body):
-                self.children[3].insert(self.body)    
+                self.children[3].insert(self.body)
+                
             self.body = None
             return
         nw = self.children[0].quadrant
@@ -160,8 +161,8 @@ class BarnesHutTree:
             return [0,0]
         com = self.getCOM()
         s = self.quadrant.length
-        delta_x = particle.position[0]-com[0]
-        delta_y = particle.position[1]-com[1]
+        delta_x = com[0]-particle.position[0]
+        delta_y = com[1]-particle.position[1]
         d = sqrt(delta_x**2+delta_y**2)
         if s/d < THETA:
             total_mass = self.getTotalMass()
@@ -193,9 +194,6 @@ class Universe:
             while a < b:
                 bht = BarnesHutTree(Quadrant(0,0,self.radius))
                 for particle in self.getChildren():
-                    print("##############")
-                    print(particle.position)
-                    print(particle.mass)
                     bht.insert(particle)
                 for particle in self.getChildren():
                     F_xy = bht.updateForce(particle)

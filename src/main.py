@@ -25,6 +25,7 @@ b = 86400 * 10 * 365
 
 universe = gravity.Universe(radius=2.50e+11)
 
+
 earth = gravity.Particle(universe,root_canvas,[1.4960e+11,0.0000e+00],[0.0000e+00,2.9800e+04],5.9740e+24,"Earth")
 mars = gravity.Particle(universe,root_canvas,[2.2790e+11,0.0000e+00],[0.0000e+00, 2.4100e+04],6.4190e+23,"Mars")
 mercury = gravity.Particle(universe,root_canvas,[5.7900e+10, 0.0000e+00],[0.0000e+00, 4.7900e+04],3.3020e+23,"Mercury")
